@@ -8,3 +8,13 @@ It is a clone of the game DownWell: tt is a game where you fall down a well and 
 
 The game is done initially with PyGame. 
 
+## Initial steps:
+
+- [ ] Create a window
+- [ ] Display a box in the screen
+- [ ] Make the box move (Left, Right)
+- [ ] Avoid the box to go out of the screen
+- [ ] Make the box fall
+- [ ] Add obstacles
+- [ ] Add collision with obstacles
+- [ ] Score system
