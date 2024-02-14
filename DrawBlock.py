@@ -5,7 +5,7 @@ SCREEN_WIDTH = 400
 pygame.init()
 
 surface = pygame.display.set_mode((SCREEN_WIDTH, 300))
-pygame.display.set_caption('Down Well Clone')
+pygame.display.set_caption('Downwell Clone')
 color = (255, 0, 0)
 
 # Initial position of the rectangle
