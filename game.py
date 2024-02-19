@@ -2,6 +2,10 @@ import pygame
 import sys
 import math
 
+PLAYER_SPRITE_FOLDER = './assets/sprites/'
+DEFAULT_SCROLL_SPEED = 5
+INITIAL_SCROLL_POSITION = 0
+
 pygame.init()
 
 clock = pygame.time.Clock()
@@ -22,7 +26,7 @@ OBSTACLE_WIDTH = 200
 OBSTACLE_HEIGHT = 70
 OBSTACLE_COLOR = (0, 255, 0)
 
-# Sprite sheet
+# Each animation sequence has 8 frames
 player_animation_frame = [pygame.Rect(PLAYER_WIDTH * i, 0, PLAYER_WIDTH, PLAYER_HEIGHT) for i in range(9)]
 
 
@@ -43,18 +47,18 @@ class Player:
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption('Drawing a box')
 
-bg = pygame.image.load("./assets/sprites/sliced_bg.png").convert()
+bg = pygame.image.load("%ssliced_bg.png" % PLAYER_SPRITE_FOLDER).convert()
 bg_height = bg.get_height()
 bg_rect = bg.get_rect()
 tiles = math.ceil(WINDOW_HEIGHT / bg_height) + 1
 
 # Load the sprite sheet
-sprite_sheet = pygame.image.load('./assets/sprites/Standing.png')
-walking_right_sheet = pygame.image.load('./assets/sprites/Walking_right.png')
-walking_left_sheet = pygame.image.load('./assets/sprites/Walking_left.png')
+standing_sheet = pygame.image.load('%sStanding.png' % PLAYER_SPRITE_FOLDER)
+walking_right_sheet = pygame.image.load('%sWalking_right.png' % PLAYER_SPRITE_FOLDER)
+walking_left_sheet = pygame.image.load('%sWalking_left.png' % PLAYER_SPRITE_FOLDER)
 
-scroll = 0
-scroll_speed = 5
+scroll = INITIAL_SCROLL_POSITION
+scroll_speed = DEFAULT_SCROLL_SPEED
 
 # WINDOW_WIDTH - box_width calculates the space available to center the box
 player = Player((WINDOW_WIDTH - PLAYER_WIDTH) // 2, 50)
@@ -132,12 +136,6 @@ while running:
     if player.y + player.height > WINDOW_HEIGHT:
         player.y = WINDOW_HEIGHT - player.height
 
-    # Calculate current frame based on animation speed
-    current_time = pygame.time.get_ticks()
-    if current_time - last_frame_time >= 200:  # Change frame every 200 milliseconds
-        current_frame = (current_frame + 1) % 4  # Two frames for each direction
-        last_frame_time = current_time
-
     # Update the background
     clock.tick(FPS)
     for i in range(0, tiles):
@@ -147,13 +145,22 @@ while running:
     for obstacle in obstacles:
         pygame.draw.rect(window, OBSTACLE_COLOR, obstacle)
 
+    # Calculate current frame based on animation speed
+    current_time = pygame.time.get_ticks()
+    # By updating the frames every 200 milliseconds, the animation looks smooth (smaller values make it faster)
+    if current_time - last_frame_time >= 200:
+        current_frame = (current_frame + 1) % 4
+        last_frame_time = current_time
+
+    # Getting the current frame to draw based on the direction (Note that the frames change so fast that, even if
+    # the current frame is not as accurate as it could be, the animation looks smooth)
     frame_ = player_animation_frame[current_frame]
     if is_facing_right:
         window.blit(walking_right_sheet, (player.x, player.y), frame_)
     elif is_facing_left:
         window.blit(walking_left_sheet, (player.x, player.y), frame_)
     else:
-        window.blit(sprite_sheet, (player.x, player.y), frame_)
+        window.blit(standing_sheet, (player.x, player.y), frame_)
 
     pygame.display.update()
 
