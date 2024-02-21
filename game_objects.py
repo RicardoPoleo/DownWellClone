@@ -81,8 +81,8 @@ class Pawn(GameObject):
                 y_distance = self.rect.height + self.rect.y - other.rect.y
                 x_distance = self.rect.width + self.rect.x - other.rect.x
                 colliders_distance[other] = pygame.math.Vector2(x_distance, y_distance) 
+                print(colliders_distance)
         self.cur_collisions = colliders_distance
-        print(colliders_distance)
         return colliders_distance
 
 
@@ -94,12 +94,12 @@ class Pawn(GameObject):
             y_col = self.cur_collisions[collision].y
             x_col = self.cur_collisions[collision].x
 
-            if y_col < 10:
+            if y_col < 20:
                 direction["down"] = 0
                 self.rect.y = int(self.rect.y - y_col + 1)
                 self.frames_falling = 0
                 is_grounded = True
-            elif y_col > (self.rect.height + collision.rect.height - 10):
+            elif y_col > (self.rect.height + collision.rect.height - 20):
                 direction["up"] = 0
                 #self.rect.y = int(self.rect.y + y_col)
 
