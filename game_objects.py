@@ -1,6 +1,7 @@
 import pygame
 import typing   #For extended typehinting
 
+GRAVITATIONAL_FORCE = 9.81
 
 class GameObject():
     """ Generic game object. 
@@ -36,8 +37,8 @@ class Pawn(GameObject):
         "prev_position",
         "window",
         "cur_collisions",
-        "time_falling",
-        "weight"
+        "frames_falling",
+        "weight",
     )
 
     def __init__(
@@ -49,14 +50,14 @@ class Pawn(GameObject):
         color: tuple, 
         speed: int,
         window: "None|pygame.surface.Surface" = None,
-        weight: int = 4 
+        weight: int = 1 
     ):
         self.window = window
         super().__init__(x, y, height, width, color)
         self.speed = speed
         self.fall_frames: int = 0
         self.cur_collisions: typing.Dict[GameObject, pygame.math.Vector2] = {}
-        self.time_falling = 1
+        self.frames_falling = 1
         self.weight: float = 0.1
     
     def check_all_collisions(
@@ -87,6 +88,7 @@ class Pawn(GameObject):
 
     def move(self, direction: dict):
 
+        is_grounded: bool = False
         #Check for collisions
         for collision in self.cur_collisions:
             y_col = self.cur_collisions[collision].y
@@ -94,13 +96,19 @@ class Pawn(GameObject):
 
             if y_col < 10:
                 direction["down"] = 0
+                self.rect.y = int(self.rect.y - y_col + 1)
+                self.frames_falling = 0
+                is_grounded = True
             elif y_col > (self.rect.height + collision.rect.height - 10):
                 direction["up"] = 0
+                #self.rect.y = int(self.rect.y + y_col)
 
             if x_col < 10:
                 direction["right"] = 0
             elif x_col > (self.rect.width + collision.rect.width - 10):
                 direction["left"] = 0
+
+        if not is_grounded: self.frames_falling += 1
         
         #Calculate projected direction
         x_new_location = self.rect.x + direction["left"] + direction["right"]
@@ -118,21 +126,31 @@ class Pawn(GameObject):
 
 
 class Controller():
-    __slots__ = ("pawn", "up", "down", "left", "right", "weight", "_time_falling")
+    """ Deals with the movement forces applied to a pawn, including player input
+    and gravitational pull.
+
+    Attributes:
+        pawn: Object to be controlled by controller.
+        up_key: Key that maps unto the "up" direction
+        down_key: Key that maps unto the "down" direction
+        left_key: Key that maps unto the "left" direction
+        right_key: Key that maps unto the "right" direction
+    """
+    __slots__ = ("pawn", "up_key", "down_key", "left_key", "right_key")
 
     def __init__(
         self, 
         pawn: Pawn|None = None, 
-        up = pygame.K_UP, 
-        down = pygame.K_DOWN, 
-        left = pygame.K_LEFT, 
-        right = pygame.K_RIGHT,
+        up_key = pygame.K_UP, 
+        down_key = pygame.K_DOWN, 
+        left_key = pygame.K_LEFT, 
+        right_key = pygame.K_RIGHT,
     ):
 
-        self.up = up
-        self.down = down
-        self.left = left
-        self.right = right
+        self.up_key = up_key
+        self.down_key = down_key
+        self.left_key = left_key
+        self.right_key = right_key
         self.pawn: Pawn|None = pawn
 
     def attach(self, pawn: Pawn):
@@ -161,20 +179,16 @@ class Controller():
         # Gets all the keys that have been pressed in this cycle
         keys = pygame.key.get_pressed()
 
-        if keys[self.left]:
+        if keys[self.left_key]:
             movement_dict["left"] -= self.pawn.speed 
-        if keys[self.right]:
+        if keys[self.right_key]:
             movement_dict["right"] += self.pawn.speed 
-        if keys[self.up]:                           #To be replaced with jump
+        if keys[self.up_key]:                           #To be replaced with jump
             movement_dict["up"] -= self.pawn.speed 
-        if keys[self.down]:                         
+        if keys[self.down_key]:                         
             movement_dict["down"] += self.pawn.speed           #To be replaced with shooting ?     
 
-        if not self.pawn.time_falling == 0:
-            movement_dict["down"] += int(self.pawn.weight * self.pawn.time_falling)
-            self.pawn.time_falling += 1
-        else:
-            self._time_falling = 0
+        movement_dict["down"] += min( int(GRAVITATIONAL_FORCE * self.pawn.frames_falling/30), 40)
 
         self.pawn.move(movement_dict)               #type: ignore (Type was checked before)
 
@@ -191,7 +205,9 @@ class GameInstance:
         self.controllers: list[Controller] = []
 
     def create_game_object(self, x, y, height, width, color) -> GameObject:
-        """ Creates a new GameObject and adds it to the list of spawned Gameobjects
+        """ Creates a new GameObject and adds it to the list of spawned 
+        Gameobjects.
+
         Params:
             x: Position on the X axis at spawn
             y: Position on the Y axis at spawn
@@ -218,14 +234,15 @@ class GameInstance:
 
     def create_player(
         self, 
-        x: int = 50,
-        y: int|None = None, 
+        x: int = None,
+        y: int|None = 0, 
         height: int = 100,
         width: int= 50, 
         color: tuple = (255,0,0), 
         speed: int = 5
     ) -> Pawn:
-        """ Creates a new pawn and sets it as the the representation of the player
+        """ Creates a new pawn and sets it as the the representation of the
+        player.
         Params:
             x: Position on the X axis at spawn
             y: Position on the Y axis at spawn
@@ -236,8 +253,8 @@ class GameInstance:
         Returns:
             Pawn instantiated and set as player.
         """
-        if y is None:
-            y = (self.window.get_width() - width) // 2
+        if x is None:
+            x = (self.window.get_width() - width) // 2
         new_player = Pawn(x, y, height, width, color, speed, self.window)
         self.game_objects.append(new_player)
         self.pawns.append(new_player)
