@@ -24,12 +24,10 @@ class Pawn(GameObject):
         "rect", 
         "speed", 
         "color",
-        "fall_frames",
         "prev_position",
         "window",
         "cur_collisions",
         "frames_falling",
-        "weight",
         "facing_dir"
     )
 
@@ -42,15 +40,12 @@ class Pawn(GameObject):
         color: tuple, 
         speed: int,
         window: "None|pygame.surface.Surface" = None,
-        weight: int = 1 
     ):
         self.window = window
         super().__init__(x, y, height, width, color)
         self.speed = speed
-        self.fall_frames: int = 0
         self.cur_collisions: typing.Dict[GameObject, pygame.math.Vector2] = {}
         self.frames_falling = 1
-        self.weight: float = 0.1
         self.facing_dir: None|str = None
         self.prev_position: tuple[int,int] = (self.rect.x, self.rect.y)
     
@@ -59,7 +54,7 @@ class Pawn(GameObject):
         others: list["GameObject"]
     ) -> typing.Dict["GameObject", pygame.math.Vector2]:
         """ Checks to see which GameObjects a pawn is currently colliding with
-        and what distance from the pawn they are
+        and what distance from the pawn they those colliding gameobjects are currently at.
         
         Params:
             others: a list of GameObjects to be checked against
