@@ -32,7 +32,10 @@ def main():
     obstacle_color = (0, 255, 0)
     
     # Each animation sequence has 8 frames
-    player_animation_frame = [pygame.Rect(PLAYER_WIDTH * i, 0, PLAYER_WIDTH, PLAYER_HEIGHT) for i in range(9)]
+    player_animation_frame = [
+        pygame.Rect(PLAYER_WIDTH * i,0, PLAYER_WIDTH,PLAYER_HEIGHT) for i in range(9)
+    ]
+
 
     # Instantiate obstacles
     game.create_game_object(0  , 200, obstacle_height, obstacle_width, obstacle_color)
@@ -78,15 +81,21 @@ def main():
         
         game.update_collisions()
         player_controller.listen()
-        game.update_scroll(bg_height)
+        scroll = game.update_scroll(bg_height)
 
-        # This needs to happen before drawing all the other objects
-        window.fill((255, 255, 255))
+        # Update background
+        for i in range(0, tiles):
+            window.blit(bg, (0, i * bg_height + scroll))
+            bg_rect.y = i * bg_height + scroll
 
+        # Draw non-moving tiles 
+        for game_object in game.game_objects:
+            if game_object == player:
+                continue
+            pygame.draw.rect(window, game_object.color, game_object.rect)
 
         # Calculate current frame based on animation speed
         current_time = pygame.time.get_ticks()
-
         # By updating the frames every 200 milliseconds, the animation looks smooth 
         # (smaller values make it faster)
         if current_time - last_frame_time >= 200:
@@ -97,22 +106,13 @@ def main():
         # change so fast that, even if the current frame is not as accurate as it could be,
         # the animation looks smooth)
         frame_ = player_animation_frame[current_frame]
-        if player.facing_dir == "left":
+        if player.facing_dir == "right":
             window.blit(walking_right_sheet, (player.rect.x, player.rect.y), frame_)
-        elif player.facing_dir == "right":
+        elif player.facing_dir == "left":
             window.blit(walking_left_sheet, (player.rect.x, player.rect.y), frame_)
         else:
             window.blit(standing_sheet, (player.rect.x, player.rect.y), frame_)
-
-        scroll = game.update_scroll(bg_height)
             
-        for i in range(0, tiles):
-            window.blit(bg, (0, i * bg_height + scroll))
-            bg_rect.y = i * bg_height + scroll
-
-        # Draw non-moving tiles 
-        for game_object in game.game_objects:
-            pygame.draw.rect(window, game_object.color, game_object.rect)
 
 
         pygame.display.update()

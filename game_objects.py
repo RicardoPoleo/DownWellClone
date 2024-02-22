@@ -283,7 +283,7 @@ class GameInstance:
         """
         cur_player_pos = (self.player.rect.x, self.player.rect.y)
         prev_player_pos = self.player.prev_position
-        scroll_dif = cur_player_pos[1] - prev_player_pos[1]
+        scroll_dif = prev_player_pos[1] - cur_player_pos[1]
 
         updated_scroll = self.scroll + scroll_dif
 
