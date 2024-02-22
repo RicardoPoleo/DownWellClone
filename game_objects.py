@@ -4,8 +4,7 @@ import typing   #For extended typehinting
 GRAVITATIONAL_FORCE = 9.81
 
 class GameObject():
-    """ Generic game object. 
-    """
+    """ Generic game object."""
 
     __slots__ = ("rect", "color") 
 
@@ -17,17 +16,9 @@ class GameObject():
         """ Check that two game objects are colliding with one another
         """
         return self.rect.colliderect(other.rect)
-    
-    def get_y(self):
-        return self.rect.y
-
-    def get_x(self):
-        return self.rect.x
-
 
 class Pawn(GameObject):
-    """ Pawn game object. 
-    """
+    """ Pawn game object."""
 
     __slots__ = (
         "rect", 
@@ -39,6 +30,7 @@ class Pawn(GameObject):
         "cur_collisions",
         "frames_falling",
         "weight",
+        "facing_dir"
     )
 
     def __init__(
@@ -59,6 +51,8 @@ class Pawn(GameObject):
         self.cur_collisions: typing.Dict[GameObject, pygame.math.Vector2] = {}
         self.frames_falling = 1
         self.weight: float = 0.1
+        self.facing_dir: None|str = None
+        self.prev_position: tuple[int,int] = (self.rect.x, self.rect.y)
     
     def check_all_collisions(
         self,
@@ -87,8 +81,19 @@ class Pawn(GameObject):
 
 
     def move(self, direction: dict):
+        """ Deals with the logic of actually moving the pawn.
+
+        Params:
+            direction: a dictionary with keys "up","down","left" and "right"
+                that correspond to each of the directions the pawn can move
+        """
+        if self.window is None:
+            raise AttributeError("Cannot move player if there is no window attached to it.")
 
         is_grounded: bool = False
+        self.prev_position = (self.rect.x, self.rect.y)
+        movement_tolerance = 20
+
         #Check for collisions
         for collision in self.cur_collisions:
             y_col = self.cur_collisions[collision].y
@@ -99,13 +104,13 @@ class Pawn(GameObject):
                 self.rect.y = int(self.rect.y - y_col + 1)
                 self.frames_falling = 0
                 is_grounded = True
-            elif y_col > (self.rect.height + collision.rect.height - 20):
+            elif y_col > (self.rect.height + collision.rect.height - movement_tolerance):
                 direction["up"] = 0
                 #self.rect.y = int(self.rect.y + y_col)
 
             if x_col < 10:
                 direction["right"] = 0
-            elif x_col > (self.rect.width + collision.rect.width - 10):
+            elif x_col > (self.rect.width + collision.rect.width - movement_tolerance):
                 direction["left"] = 0
 
         if not is_grounded: self.frames_falling += 1
@@ -160,19 +165,13 @@ class Controller():
             raise TypeError("Can only attach Pawns to controllers")
         self.pawn = pawn
 
-    def is_attached(self):
-        """ Check whether or not the controller is attached to a Pawn
-        """
-        return self.pawn is not None
-
     def listen(self) -> None:
         """ Get all inputs and move pawn accordingly
         Raises:
             AttributeError if the controller is not attached
         """
-        
-        if not self.is_attached:
-            raise AttributeError("Controller must be attached to a pawn to listen")
+        if self.pawn is None:
+            raise AttributeError("Pawn must be attached for controller to listen.")
 
         movement_dict = {"left": 0, "up": 0, "right": 0, "down": 0} 
 
@@ -181,28 +180,33 @@ class Controller():
 
         if keys[self.left_key]:
             movement_dict["left"] -= self.pawn.speed 
+            self.pawn.facing_dir = "left"
         if keys[self.right_key]:
             movement_dict["right"] += self.pawn.speed 
-        if keys[self.up_key]:                           #To be replaced with jump
+            self.pawn.facing_dir = "right"
+        if keys[self.up_key]:                                   #To be replaced with jump
             movement_dict["up"] -= self.pawn.speed 
         if keys[self.down_key]:                         
-            movement_dict["down"] += self.pawn.speed           #To be replaced with shooting ?     
+            movement_dict["down"] += self.pawn.speed            #To be replaced with shooting ? 
 
-        movement_dict["down"] += min( int(GRAVITATIONAL_FORCE * self.pawn.frames_falling/30), 40)
+        max_grav_pull = 40
+        grav_pull = min(int(GRAVITATIONAL_FORCE * self.pawn.frames_falling/30), max_grav_pull)
+        movement_dict["down"] += grav_pull
 
-        self.pawn.move(movement_dict)               #type: ignore (Type was checked before)
+        self.pawn.move(movement_dict)
 
 
 class GameInstance:
     """ Manager class for a game session"""
     
-    __slots__ = ("game_objects", "pawns", "controllers", "window")
+    __slots__ = ("game_objects", "pawns", "controllers", "window", "scroll", "player")
 
     def __init__(self):
         self.window: "None|pygame.surface.Surface" = None
         self.game_objects: list["GameObject"] = []
         self.pawns: list[Pawn] = []      
         self.controllers: list[Controller] = []
+        self.scroll = 0
 
     def create_game_object(self, x, y, height, width, color) -> GameObject:
         """ Creates a new GameObject and adds it to the list of spawned 
@@ -234,8 +238,8 @@ class GameInstance:
 
     def create_player(
         self, 
-        x: int = None,
-        y: int|None = 0, 
+        x: int|None = None,
+        y: int = 0, 
         height: int = 100,
         width: int= 50, 
         color: tuple = (255,0,0), 
@@ -253,17 +257,46 @@ class GameInstance:
         Returns:
             Pawn instantiated and set as player.
         """
+        if self.window is None:
+            raise AttributeError("Window must be attached to gameinstance to create player")
+
         if x is None:
             x = (self.window.get_width() - width) // 2
         new_player = Pawn(x, y, height, width, color, speed, self.window)
         self.game_objects.append(new_player)
         self.pawns.append(new_player)
+        self.player = new_player
         return (new_player)
 
-    # None of this is really done
     def update_collisions(self) -> None:
-        """ Run through all possible collisions in scene for each pawn.
-        """
+        """ Run through all possible collisions in scene for each pawn."""
         for pawn in self.pawns:
             pawn.check_all_collisions(self.game_objects)
+    
+    def update_scroll(self, bg_height) -> int:
+        """ Get the difference in scrolling between the last tick and this one and
+            update the gameinstance scroll variable. To be called after movement has been
+            calculated.
+
+            Returns:
+                Current scroll variable
+        """
+        cur_player_pos = (self.player.rect.x, self.player.rect.y)
+        prev_player_pos = self.player.prev_position
+        scroll_dif = cur_player_pos[1] - prev_player_pos[1]
+
+        updated_scroll = self.scroll + scroll_dif
+
+        # reset scroll
+        if updated_scroll > bg_height:
+            updated_scroll = 0
+        if updated_scroll < -bg_height:
+            updated_scroll = 0
+
+        self.scroll = updated_scroll
+
+        return updated_scroll
+
+
+        
 
