@@ -225,7 +225,7 @@ class GameInstance:
         self.game_objects.append(new_gameobject)
         return new_gameobject 
 
-    def start_window(self, width: int = 500, height: int = 1000) -> None:
+    def start_window(self, width: int = 600, height: int = 1000) -> None:
         """ Initialize the window surface
         Params:
             width: width of window
