@@ -75,7 +75,6 @@ class Pawn(GameObject):
                 y_distance = self.rect.height + self.rect.y - other.rect.y
                 x_distance = self.rect.width + self.rect.x - other.rect.x
                 colliders_distance[other] = pygame.math.Vector2(x_distance, y_distance) 
-                print(colliders_distance)
         self.cur_collisions = colliders_distance
         return colliders_distance
 
